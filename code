@@ -1,0 +1,408 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <random>
+#include <fstream>
+
+using namespace std;
+
+struct Record {
+    string fileName;
+    int balance;
+};
+
+class Deck {
+public:
+    Deck();
+    string dealCard();
+    void shuffleDeck();
+
+private:
+    vector<string> cards;
+};
+
+Deck::Deck() {
+    string suits = "ЧБПК"; // Червы, Бубны, Пики, Крести
+    string values = "А23456789TJQK"; // Значения карт
+
+    for (char suit : suits) {
+        for (char value : values) {
+            cards.push_back(string(1, value) + suit);
+        }
+    }
+    shuffleDeck();
+}
+
+void Deck::shuffleDeck() {
+    random_device rd;
+    mt19937 g(rd());
+    shuffle(cards.begin(), cards.end(), g);
+}
+
+string Deck::dealCard() {
+    if (cards.empty()) {
+        shuffleDeck();
+    }
+    string card = cards.back();
+    cards.pop_back();
+    return card;
+}
+
+class Game {
+public:
+    Game();
+    void startGame();
+    void loadGame();
+    void saveGame();
+    void displayMenu();
+    void displayInterface();
+    void handleUserInput();
+    void dealInitialCards();
+    void playerDrawCard();
+    void computerPlay();
+    int calculateScore(const string& hand);
+    void checkGameState();
+    void playerTurn();
+    void displayRecords();
+    void displayHelp();
+
+private:
+    int currentPlayerScore;
+    int computerScore;
+    string currentPlayerHand;
+    string computerHand;
+    bool gameOver;
+    Deck deck;
+    int balance;
+    int bet;
+    string saveFileName;
+    vector<Record> records;
+
+    void placeBet();
+    void saveToFile(const string& fileName);
+    void loadFromFile(const string& fileName);
+    void saveRecord(const string& fileName, int balance);
+    void loadRecords();
+};
+
+Game::Game() : currentPlayerScore(0), computerScore(0), gameOver(false), balance(500), bet(0) {
+    loadRecords(); // Загрузить рекорды при создании игры
+}
+
+void Game::startGame() {
+    cout << "Начинаем новую игру!" << endl;
+    gameOver = false; // Сбросить gameOver в false перед началом новой игры
+    currentPlayerScore = 0;
+    computerScore = 0;
+    currentPlayerHand = "";
+    computerHand = "";
+    deck.shuffleDeck();
+    placeBet();
+    dealInitialCards();
+    displayInterface();
+    playerTurn();
+}
+
+void Game::placeBet() {
+    cout << "Ваш баланс: " << balance << " монет." << endl;
+    cout << "Введите вашу ставку: ";
+    cin >> bet;
+    while (bet > balance || bet <= 0) {
+        cout << "Неверная ставка. Введите снова: ";
+        cin >> bet;
+    }
+    balance -= bet;
+}
+
+void Game::dealInitialCards() {
+    currentPlayerHand = deck.dealCard() + " " + deck.dealCard();
+    computerHand = deck.dealCard() + " " + deck.dealCard();
+    currentPlayerScore = calculateScore(currentPlayerHand);
+    computerScore = calculateScore(computerHand);
+}
+
+void Game::loadGame() {
+    cout << "Введите имя сохранения для загрузки: ";
+    cin >> saveFileName;
+    loadFromFile(saveFileName);
+    displayInterface();
+}
+
+void Game::saveGame() {
+    cout << "Введите имя для сохранения: ";
+    cin >> saveFileName;
+    saveToFile(saveFileName);
+    saveRecord(saveFileName, balance);
+    cout << "Игра сохранена как " << saveFileName << "." << endl;
+}
+
+void Game::displayMenu() {
+    cout << "1. Начать новую игру" << endl;
+    cout << "2. Загрузить сохраненную игру" << endl;
+    cout << "3. Сохранить игру" << endl;
+    cout << "4. Таблица рекордов" << endl;
+    cout << "5. Помощь" << endl;
+    cout << "6. Выход" << endl;
+    handleUserInput();
+}
+
+void Game::displayInterface() {
+    cout << "Карты игрока: " << currentPlayerHand << endl;
+    cout << "Карты компьютера: " << computerHand.substr(3) << " XX" << endl;
+    cout << "Очки игрока: " << currentPlayerScore << endl;
+}
+
+int Game::calculateScore(const string& hand) {
+    int score = 0;
+    int aces = 0;
+
+    for (size_t i = 0; i < hand.length(); i += 3) {
+        char value = hand[i];
+        if (value == 'А') {
+            aces++;
+            score += 11;
+        }
+        else if (value == 'T' || value == 'J' || value == 'Q' || value == 'K') {
+            score += 10;
+        }
+        else {
+            score += value - '0';
+        }
+    }
+
+    while (score > 21 && aces > 0) {
+        score -= 10;
+        aces--;
+    }
+
+    return score;
+}
+
+void Game::checkGameState() {
+    if (currentPlayerScore > 21) {
+        cout << "Перебор! Компьютер выигрывает." << endl;
+        balance -= bet;
+        gameOver = true;
+    }
+    else if (currentPlayerScore == 21) {
+        cout << "21 очко! Вы выиграли!" << endl;
+        balance += bet * 2;
+        gameOver = true;
+    }
+    else if (computerScore > 21) {
+        cout << "Перебор у компьютера! Вы выиграли!" << endl;
+        balance += bet * 2;
+        gameOver = true;
+    }
+    else if (computerScore == 21) {
+        cout << "21 очко у компьютера! Компьютер выигрывает." << endl;
+        balance -= bet;
+        gameOver = true;
+    }
+    else if (currentPlayerScore == computerScore) { // Добавить условие для ничьей
+        cout << "Ничья! Очки игрока: " << currentPlayerScore << ", Очки компьютера: " << computerScore << endl;
+        balance += bet; // Увеличить баланс на ставку
+        gameOver = true;
+    }
+
+    if (gameOver) {
+        cout << "Финальные очки:" << endl;
+        cout << "Очки игрока: " << currentPlayerScore << endl;
+        cout << "Карты компьютера: " << computerHand << endl;
+        cout << "Очки компьютера: " << computerScore << endl;
+        cout << "Ваш баланс: " << balance << " монет." << endl;
+
+        // выбор продолжения игры или выхода из игры
+        cout << "Хотите сыграть еще? (yes/no): ";
+        string playAgain;
+        cin >> playAgain;
+        if (playAgain == "no") {
+            cout << "Возвращаемся в главное меню..." << endl;
+            displayMenu();
+        }
+        else {
+            startGame();
+        }
+    }
+    else {
+        playerTurn();
+    }
+}
+
+void Game::playerDrawCard() {
+    currentPlayerHand += " " + deck.dealCard();
+    currentPlayerScore = calculateScore(currentPlayerHand);
+    displayInterface();
+    checkGameState();
+}
+
+void Game::computerPlay() {
+    int playerCardCount = (currentPlayerHand.length() + 1) / 3;
+    int targetCardCount = playerCardCount + 1;
+    while ((computerHand.length() + 1) / 3 < targetCardCount && computerScore <= 17) {
+        computerHand += " " + deck.dealCard();
+        computerScore = calculateScore(computerHand);
+    }
+    checkGameState();
+}
+
+void Game::playerTurn() {
+    while (!gameOver) {
+        cout << "Выберите действие:" << endl;
+        cout << "1. Взять еще карту" << endl;
+        cout << "2. Завершить ход" << endl;
+        cout << "3. Выход в главное меню" << endl;
+        int choice;
+        cin >> choice;
+        switch (choice) {
+        case 1:
+            playerDrawCard();
+            break;
+        case 2:
+            gameOver = true;
+            computerPlay();
+            break;
+        case 3:
+            cout << "Выход в главное меню." << endl;
+            displayMenu();
+            return;
+        default:
+            cout << "Неверный выбор. Попробуйте снова." << endl;
+            break;
+        }
+    }
+}
+
+void Game::handleUserInput() {
+    int choice;
+    cout << "Выберите действие:" << endl;
+    cin >> choice;
+    switch (choice) {
+    case 1:
+        startGame();
+        break;
+    case 2:
+        loadGame();
+        displayMenu();
+        break;
+    case 3:
+        saveGame();
+        break;
+    case 4:
+        displayRecords();
+        break;
+    case 5:
+        displayHelp();
+        break;
+    case 6:
+        cout << "Выход из игры." << endl;
+        exit(0);
+        break;
+    default:
+        cout << "Неверный выбор. Попробуйте снова." << endl;
+        break;
+    }
+    if (!gameOver) {
+        displayMenu();
+    }
+}
+
+void Game::saveToFile(const string& fileName) {
+    ofstream saveFile(fileName);
+    if (saveFile.is_open()) {
+        saveFile << balance << endl;
+        saveFile << bet << endl;
+        saveFile << currentPlayerScore << endl;
+        saveFile << computerScore << endl;
+        saveFile << currentPlayerHand << endl;
+        saveFile << computerHand << endl;
+        saveFile << gameOver << endl;
+        saveFile.close();
+    }
+    else {
+        cout << "Не удалось открыть файл для сохранения." << endl;
+    }
+}
+
+void Game::loadFromFile(const string& fileName) {
+    ifstream saveFile(fileName);
+    if (saveFile.is_open()) {
+        saveFile >> balance;
+        saveFile >> bet;
+        saveFile >> currentPlayerScore;
+        saveFile >> computerScore;
+        saveFile.ignore();
+        getline(saveFile, currentPlayerHand);
+        getline(saveFile, computerHand);
+        saveFile >> gameOver;
+        saveFile.close();
+        cout << "Игра успешно загружена из файла " << fileName << "." << endl;
+    }
+    else {
+        cout << "Не удалось открыть файл для загрузки." << endl;
+    }
+}
+
+void Game::saveRecord(const string& fileName, int balance) {
+    records.push_back({ fileName, balance });
+    ofstream recordFile("records.txt");
+    if (recordFile.is_open()) {
+        for (const Record& record : records) {
+            recordFile << record.fileName << " " << record.balance << endl;
+        }
+        recordFile.close();
+    }
+    else {
+        cout << "Не удалось открыть файл для записи рекордов." << endl;
+    }
+}
+
+void Game::loadRecords() {
+    ifstream recordFile("records.txt");
+    if (recordFile.is_open()) {
+        Record record;
+        while (recordFile >> record.fileName >> record.balance) {
+            records.push_back(record);
+        }
+        recordFile.close();
+    }
+    else {
+        cout << "Не удалось открыть файл для загрузки сохраненных игр." << endl;
+    }
+}
+
+void Game::displayRecords() {
+    cout << "Сохраненные игры:" << endl;
+    for (const Record& record : records) {
+        cout << "Файл: " << record.fileName << " | Баланс: " << record.balance << " монет" << endl;
+    }
+    cout << "Нажмите Enter, чтобы вернуться в меню...";
+    cin.ignore();
+    cin.get();
+    displayMenu();
+}
+void Game::displayHelp() {
+    cout << "Описание игры:" << endl;
+    cout << "Это карточная игра, основанная на правилах блэкджека. Цель игры - набрать больше очков, чем компьютер, не превышая 21!" << endl;
+    cout << "Правила игры:" << endl;
+    cout << "1. Игрок и компьютер получают по две карты в начале игры. Баланс игрока изначально равен 500 монет" << endl;
+    cout << "2. Сначала игрок должен сделать ставку. Эта ставка удваивается и прибавляется к балансу игрока при выигрыше и отнимается при проигрыше." << endl;
+    cout << "3. Карты с цифрами имеют значение соответствующих чисел, карты 'T', 'J', 'Q', 'K' стоят 10 очков, 'А' может стоить 1 или 11 очков." << endl;
+    cout << "4. Игрок может взять дополнительные карты, чтобы улучшить свою руку, но не должен превышать 21 очко." << endl;
+    cout << "5. После завершения хода игрока компьютер будет брать карты до тех пор, пока не наберет минимум 17 очков." << endl;
+    cout << "6. Побеждает тот, кто ближе к 21 очку, но не переберет." << endl;
+    cout << "Создатели игры: Красноярова Кристина и Григорьева Евгения студентки группы 8И32" << endl;
+    cout << "Нажмите Enter, чтобы вернуться в меню...";
+    cin.ignore();
+    cin.get();
+    displayMenu();
+}
+
+int main() {
+    setlocale(LC_ALL, "Rus");
+    Game game;
+    game.displayMenu();
+    return 0;
+}
+
