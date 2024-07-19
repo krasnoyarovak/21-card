@@ -1,3 +1,4 @@
+// Подключение библиотек
 #include <iostream>
 #include <string>
 #include <vector>
@@ -5,50 +6,57 @@
 #include <random>
 #include <fstream>
 
+// Использование пространства имен std
 using namespace std;
 
+// Определение структуры Record
 struct Record {
-    string fileName;
-    int balance;
+    string fileName; // имя файла
+    int balance; // баланс
 };
 
+// Определение класса Deck
 class Deck {
 public:
-    Deck();
-    string dealCard();
-    void shuffleDeck();
+    Deck(); // конструктор
+    string dealCard(); // выдать карту
+    void shuffleDeck(); // перемешать колоду
 
 private:
-    vector<string> cards;
+    vector<string> cards; // вектор карт
 };
 
+// Реализация конструктора класса Deck
 Deck::Deck() {
-    string suits = "ЧБПК"; // Червы, Бубны, Пики, Крести
-    string values = "А23456789TJQK"; // Значения карт
+    string suits = "ЧБПК"; // масти: Червы, Бубны, Пики, Крести
+    string values = "А23456789TJQK"; // значения карт
 
-    for (char suit : suits) {
-        for (char value : values) {
-            cards.push_back(string(1, value) + suit);
+    for (char suit : suits) { // перебор мастей
+        for (char value : values) { // перебор значений карт
+            cards.push_back(string(1, value) + suit); // добавление карты в колоду
         }
     }
-    shuffleDeck();
+    shuffleDeck(); // перемешивание колоды
 }
 
+// Реализация функции перемешивания колоды
 void Deck::shuffleDeck() {
-    random_device rd;
-    mt19937 g(rd());
-    shuffle(cards.begin(), cards.end(), g);
+    random_device rd; // генератор случайных чисел
+    mt19937 g(rd()); // инициализация генератора
+    shuffle(cards.begin(), cards.end(), g); // перемешивание колоды
 }
 
+// Реализация функции выдачи карты
 string Deck::dealCard() {
-    if (cards.empty()) {
-        shuffleDeck();
+    if (cards.empty()) { // если колода пустая
+        shuffleDeck(); // перемешать колоду
     }
-    string card = cards.back();
-    cards.pop_back();
-    return card;
+    string card = cards.back(); // взять последнюю карту из колоды
+    cards.pop_back(); // удалить последнюю карту из колоды
+    return card; // вернуть карту
 }
 
+// Определение класса Game
 class Game {
 public:
     Game();
@@ -86,13 +94,15 @@ private:
     void loadRecords();
 };
 
+// Реализация конструктора класса Game
 Game::Game() : currentPlayerScore(0), computerScore(0), gameOver(false), balance(500), bet(0) {
-    loadRecords(); // Загрузить рекорды при создании игры
+    loadRecords(); // загрузить рекорды при создании игры
 }
 
+// Реализация функции начала игры
 void Game::startGame() {
     cout << "Начинаем новую игру!" << endl;
-    gameOver = false; // Сбросить gameOver в false перед началом новой игры
+    gameOver = false; // сбросить gameOver в false перед началом новой игры
     currentPlayerScore = 0;
     computerScore = 0;
     currentPlayerHand = "";
@@ -104,6 +114,7 @@ void Game::startGame() {
     playerTurn();
 }
 
+// Реализация функции делания ставки
 void Game::placeBet() {
     cout << "Ваш баланс: " << balance << " монет." << endl;
     cout << "Введите вашу ставку: ";
@@ -115,6 +126,7 @@ void Game::placeBet() {
     balance -= bet;
 }
 
+// Реализация функции выдачи начальных карт
 void Game::dealInitialCards() {
     currentPlayerHand = deck.dealCard() + " " + deck.dealCard();
     computerHand = deck.dealCard() + " " + deck.dealCard();
@@ -122,6 +134,7 @@ void Game::dealInitialCards() {
     computerScore = calculateScore(computerHand);
 }
 
+// Реализация функции загрузки игры
 void Game::loadGame() {
     cout << "Введите имя сохранения для загрузки: ";
     cin >> saveFileName;
@@ -129,6 +142,7 @@ void Game::loadGame() {
     displayInterface();
 }
 
+// Реализация функции сохранения игры
 void Game::saveGame() {
     cout << "Введите имя для сохранения: ";
     cin >> saveFileName;
@@ -137,6 +151,7 @@ void Game::saveGame() {
     cout << "Игра сохранена как " << saveFileName << "." << endl;
 }
 
+// Реализация функции отображения меню
 void Game::displayMenu() {
     cout << "1. Начать новую игру" << endl;
     cout << "2. Загрузить сохраненную игру" << endl;
@@ -147,12 +162,14 @@ void Game::displayMenu() {
     handleUserInput();
 }
 
+// Реализация функции отображения интерфейса
 void Game::displayInterface() {
     cout << "Карты игрока: " << currentPlayerHand << endl;
     cout << "Карты компьютера: " << computerHand.substr(3) << " XX" << endl;
     cout << "Очки игрока: " << currentPlayerScore << endl;
 }
 
+// Реализация функции подсчета очков
 int Game::calculateScore(const string& hand) {
     int score = 0;
     int aces = 0;
@@ -179,6 +196,7 @@ int Game::calculateScore(const string& hand) {
     return score;
 }
 
+// Реализация функции проверки состояния игры
 void Game::checkGameState() {
     if (currentPlayerScore > 21) {
         cout << "Перебор! Компьютер выигрывает." << endl;
@@ -230,6 +248,7 @@ void Game::checkGameState() {
     }
 }
 
+// Реализация функции взятия карты игроком
 void Game::playerDrawCard() {
     currentPlayerHand += " " + deck.dealCard();
     currentPlayerScore = calculateScore(currentPlayerHand);
@@ -237,6 +256,7 @@ void Game::playerDrawCard() {
     checkGameState();
 }
 
+// Реализация функции хода компьютера
 void Game::computerPlay() {
     int playerCardCount = (currentPlayerHand.length() + 1) / 3;
     int targetCardCount = playerCardCount + 1;
@@ -247,6 +267,7 @@ void Game::computerPlay() {
     checkGameState();
 }
 
+// Реализация функции хода игрока
 void Game::playerTurn() {
     while (!gameOver) {
         cout << "Выберите действие:" << endl;
@@ -274,6 +295,7 @@ void Game::playerTurn() {
     }
 }
 
+// Реализация функции обработки ввода пользователя
 void Game::handleUserInput() {
     int choice;
     cout << "Выберите действие:" << endl;
@@ -308,6 +330,7 @@ void Game::handleUserInput() {
     }
 }
 
+// Реализация функции сохранения в файл
 void Game::saveToFile(const string& fileName) {
     ofstream saveFile(fileName);
     if (saveFile.is_open()) {
@@ -325,6 +348,7 @@ void Game::saveToFile(const string& fileName) {
     }
 }
 
+// Реализация функции загрузки из файла
 void Game::loadFromFile(const string& fileName) {
     ifstream saveFile(fileName);
     if (saveFile.is_open()) {
@@ -344,6 +368,7 @@ void Game::loadFromFile(const string& fileName) {
     }
 }
 
+// Реализация функции сохранения рекорда
 void Game::saveRecord(const string& fileName, int balance) {
     records.push_back({ fileName, balance });
     ofstream recordFile("records.txt");
@@ -358,6 +383,7 @@ void Game::saveRecord(const string& fileName, int balance) {
     }
 }
 
+// Реализация функции загрузки рекордов
 void Game::loadRecords() {
     ifstream recordFile("records.txt");
     if (recordFile.is_open()) {
@@ -372,6 +398,7 @@ void Game::loadRecords() {
     }
 }
 
+// Реализация функции отображения рекордов
 void Game::displayRecords() {
     cout << "Сохраненные игры:" << endl;
     for (const Record& record : records) {
@@ -382,6 +409,8 @@ void Game::displayRecords() {
     cin.get();
     displayMenu();
 }
+
+// Реализация функции отображения помощи
 void Game::displayHelp() {
     cout << "Описание игры:" << endl;
     cout << "Это карточная игра, основанная на правилах блэкджека. Цель игры - набрать больше очков, чем компьютер, не превышая 21!" << endl;
@@ -399,10 +428,12 @@ void Game::displayHelp() {
     displayMenu();
 }
 
+// Главная функция
 int main() {
     setlocale(LC_ALL, "Rus");
     Game game;
     game.displayMenu();
     return 0;
 }
+
 
